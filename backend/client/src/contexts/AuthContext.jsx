@@ -1,66 +1,27 @@
-import React, { createContext, useContext, useState, useCallback } from 'react'
-import api from '../services/api'
+import React, {createContext, useContext, useEffect, useState} from 'react'
+import { supabase } from '../lib/supabase'
 
-const AuthContext = createContext(null)
+const AuthContext = createContext()
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    try {
-      const u = localStorage.getItem('hapvida_user')
-      return u ? JSON.parse(u) : null
-    } catch {
-      return null
-    }
+export function AuthProvider({children}) {
+ const [user,setUser]=useState(null)
+ const [loading,setLoading]=useState(true)
+
+ useEffect(()=>{
+  supabase.auth.getSession().then(({data})=>{
+   setUser(data.session?.user ?? null)
+   setLoading(false)
   })
+  const {data:{subscription}}=supabase.auth.onAuthStateChange((_e,session)=>{
+   setUser(session?.user ?? null)
+  })
+  return ()=>subscription.unsubscribe()
+ },[])
 
-  const persistSession = useCallback((token, userData) => {
-    localStorage.setItem('hapvida_token', token)
-    localStorage.setItem('hapvida_user', JSON.stringify(userData))
-    setUser(userData)
-  }, [])
+ const login=(email,password)=>supabase.auth.signInWithPassword({email,password})
+ const logout=()=>supabase.auth.signOut()
+ const register=(name,email,password)=>supabase.auth.signUp({email,password,options:{data:{name}}})
 
-  const login = useCallback(async (email, password) => {
-    const { token, user: userData } = await api.login(email, password)
-    persistSession(token, userData)
-    return userData
-  }, [persistSession])
-
-  const register = useCallback(async (name, email, password) => {
-    const { token, user: userData } = await api.register(name, email, password)
-    persistSession(token, userData)
-    return userData
-  }, [persistSession])
-
-  const logout = useCallback(() => {
-    localStorage.removeItem('hapvida_token')
-    localStorage.removeItem('hapvida_user')
-    setUser(null)
-  }, [])
-
-  const changePassword = useCallback(async (currentPassword, newPassword) => {
-    await api.changePassword(currentPassword, newPassword)
-    setUser(prev => {
-      const updated = { ...prev, mustChangePassword: false }
-      localStorage.setItem('hapvida_user', JSON.stringify(updated))
-      return updated
-    })
-  }, [])
-
-  const updateProfile = useCallback(async (name) => {
-    const { token, user: userData } = await api.updateProfile(name)
-    persistSession(token, userData)
-    return userData
-  }, [persistSession])
-
-  return (
-    <AuthContext.Provider value={{ user, login, register, logout, changePassword, updateProfile }}>
-      {children}
-    </AuthContext.Provider>
-  )
+ return <AuthContext.Provider value={{user,loading,login,logout,register}}>{children}</AuthContext.Provider>
 }
-
-export function useAuth() {
-  const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth deve ser usado dentro de <AuthProvider>')
-  return ctx
-}
+export const useAuth=()=>useContext(AuthContext)
