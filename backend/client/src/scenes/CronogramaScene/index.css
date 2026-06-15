@@ -1,0 +1,22 @@
+.cronograma-scene {
+  min-height: 100vh;
+  background: rgb(241, 245, 249);
+}
+
+.cronograma-scene .scene-content-shell {
+  width: 75%;
+  margin: 18px auto 0;
+}
+
+@media (max-width: 1200px) {
+  .cronograma-scene .scene-content-shell {
+    width: 90%;
+  }
+}
+
+@media (max-width: 760px) {
+  .cronograma-scene .scene-content-shell {
+    width: 100%;
+    margin-top: 10px;
+  }
+}

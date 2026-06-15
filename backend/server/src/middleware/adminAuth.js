@@ -1,0 +1,26 @@
+const jwt = require('jsonwebtoken');
+
+function adminAuthMiddleware(req, res, next) {
+  const header = req.headers['authorization'];
+  if (!header || !header.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Token não fornecido.' });
+  }
+  const token = header.slice(7);
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    if (!payload.isAdmin) {
+      return res.status(403).json({ error: 'Acesso negado. Apenas administradores.' });
+    }
+    req.user = { 
+      id: payload.id, 
+      email: payload.email, 
+      name: payload.name, 
+      isAdmin: payload.isAdmin 
+    };
+    next();
+  } catch {
+    return res.status(401).json({ error: 'Token inválido ou expirado.' });
+  }
+}
+
+module.exports = adminAuthMiddleware;
